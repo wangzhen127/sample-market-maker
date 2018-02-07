@@ -7,6 +7,8 @@ import random
 import requests
 import atexit
 import signal
+import ccxt
+import pprint
 
 from market_maker import bitmex
 from market_maker.settings import settings
@@ -34,6 +36,27 @@ class ExchangeInterface:
                                     apiKey=settings.API_KEY, apiSecret=settings.API_SECRET,
                                     orderIDPrefix=settings.ORDERID_PREFIX, postOnly=settings.POST_ONLY,
                                     timeout=settings.TIMEOUT)
+
+    def close_all_open_positions(self):
+        # Use ccxt in case websocket is not working.
+        logger.info("Close all open positions.")
+        bitmex = ccxt.bitmex({
+          'apiKey': settings.API_KEY,
+          'secret': settings.API_SECRET
+        })
+        if "test" in settings.BASE_URL:
+            bitmex.urls['api'] = bitmex.urls['test']
+        positions = bitmex.private_get_position()
+        for pos in positions:
+            if pos['symbol'] != self.symbol:
+                continue
+            qty = pos['currentQty']
+            bitmex.private_post_order({
+                'symbol': self.symbol,
+                'ordType': 'Market',
+                'orderQty': -qty,
+                'execInst': 'Close',
+            })
 
     def cancel_order(self, order):
         tickLog = self.get_instrument()['tickLog']
@@ -498,6 +521,7 @@ class OrderManager:
         except Exception as e:
             logger.info("Unable to cancel orders: %s" % e)
 
+        self.exchange.close_all_open_positions()
         sys.exit()
 
     def run_loop(self):

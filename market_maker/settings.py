@@ -17,7 +17,7 @@ def import_path(fullpath):
     filename, ext = os.path.splitext(filename)
     sys.path.insert(0, path)
     module = importlib.import_module(filename, path)
-    importlib.reload(module)  # Might be out of date
+    #importlib.reload(module)  # Might be out of date
     del sys.path[0]
     return module
 
